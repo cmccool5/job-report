@@ -6,9 +6,11 @@
     <title>US Job Title Demand Report</title>
     <style>
         body { font-family: sans-serif; margin: 40px; color: #333; line-height: 1.5; }
-        h1 { color: #24292e; border-bottom: 2px solid #eaecef; padding-bottom: 10px; }
+        h1 { color: #24292e; border-bottom: 2px solid #eaecef; padding-bottom: 10px; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        #search-input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 20px; box-sizing: border-box; }
         .loading { font-style: italic; color: #666; font-size: 1.2em; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         th, td { text-align: left; padding: 15px; border-bottom: 1px solid #ddd; }
         th { background-color: #f6f8fa; color: #24292e; font-weight: 600; }
         tr:hover { background-color: #f8f9fa; }
@@ -16,9 +18,15 @@
     </style>
 </head>
 <body>
+
     <h1>US Job Title Demand Report</h1>
-    <p>Live analysis tracking identical job titles to show what roles are currently in highest demand.</p>
+    <p class="subtitle">Live analysis tracking identical job titles to show what roles are currently in highest demand.</p>
+    
+    <!-- Search Box -->
+    <input type="text" id="search-input" placeholder="🔍 Type to filter job titles (e.g., Engineer, Manager, Remote)..." disabled>
+
     <div id="loader" class="loading">🔄 Fetching live data from job boards...</div>
+    
     <table id="report-table" style="display:none;">
         <thead>
             <tr>
@@ -29,30 +37,53 @@
         </thead>
         <tbody id="report-body"></tbody>
     </table>
+
     <script>
         async function generateReport() {
             try {
                 const response = await fetch('https://arbeitnow.com');
                 const data = await response.json();
                 const titleCounts = {};
+                
                 data.data.forEach(job => {
                     let title = job.title.trim();
                     title = title.charAt(0).toUpperCase() + title.slice(1); 
                     titleCounts[title] = (titleCounts[title] || 0) + 1;
                 });
+                
                 const sortedTitles = Object.entries(titleCounts).sort((a, b) => b - a);
                 const tbody = document.getElementById('report-body');
+                
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('report-table').style.display = 'table';
-                sortedTitles.forEach(([title, count], index) => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td><strong>#${index + 1}</strong></td>
-                        <td>${title}</td>
-                        <td><span class="count-badge">${count}</span></td>
-                    `;
-                    tbody.appendChild(row);
+                
+                const searchInput = document.getElementById('search-input');
+                searchInput.disabled = false; // Enable search once data is ready
+
+                function renderTable(filterText = '') {
+                    tbody.innerHTML = '';
+                    let displayIndex = 1;
+
+                    sortedTitles.forEach(([title, count]) => {
+                        if (title.toLowerCase().includes(filterText.toLowerCase())) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td><strong>#${displayIndex}</strong></td>
+                                <td>${title}</td>
+                                <td><span class="count-badge">${count}</span></td>
+                            `;
+                            tbody.appendChild(row);
+                            displayIndex++;
+                        }
+                    });
+                }
+
+                renderTable();
+
+                searchInput.addEventListener('input', (e) => {
+                    renderTable(e.target.value);
                 });
+
             } catch (error) {
                 document.getElementById('loader').innerText = '❌ Error loading job data. Please try refreshing.';
                 console.error(error);
